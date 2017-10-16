@@ -15,7 +15,7 @@ country(chile).
 occupy(X, C) :-
   country(C),
   occupied(X, C),
-  write('You''re already occupying the lcoation!'),
+  write('Youre already occupying the location!'),
   nl.
 % case where you occupy someone elses territory
 occupy(X, C) :-
@@ -28,7 +28,7 @@ occupy(X, C) :-
   write(C),
   write(',from player: '),
   write(X2),
-  nl, !.
+  nl.
 
 % case where
 occupy(X, C) :-
@@ -36,7 +36,7 @@ occupy(X, C) :-
   \+ occupied(_, C),
   assert(occupied(X, C)),
   write('occupied empty spot.'),
-  nl, !.
+  nl.
 
 own_north_america(X) :-
   occupied(X, canada),
