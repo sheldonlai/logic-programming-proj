@@ -1,7 +1,6 @@
 
 :-  dynamic(occupied/2).
 
-:- dynamic at/2.   /* Needed by SWI-Prolog. */
 :- retractall(occupied(_, _)), retractall(army(_, _)).
 
 country(canada).
