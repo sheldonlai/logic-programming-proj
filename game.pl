@@ -96,10 +96,15 @@ attack(X, C) :-
 
 attack(X, C) :-
   country(C),
-  X = X2,
   occupied(X2, C),
+  X = X2,
   occupied(X, C2),
   is_next_to(C2, C),
   %
   write('TODO not yet implemented'),
   nl.
+
+set_army(C, A) :-
+  country(C),
+  retract(army(C, A)),
+  assert(army(C, A)).
