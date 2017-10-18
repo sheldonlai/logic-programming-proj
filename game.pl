@@ -49,8 +49,8 @@ next_to(peru, ecuador).
 next_to(columbia, edcuador).
 next_to(columbia, venezuela).
 
-
-
+team(player).
+team(comp).
 
 is_next_to(X, Y) :-
   next_to(X, Y);
@@ -108,29 +108,57 @@ attack(X, C) :-
   write('TODO not yet implemented'),
   nl. 
 
-armySetUp :-                % Need to figure out how turns will work
-  write("Number of armies left to distribute: "),
+handleFalse(false, E) :-
+  write(E).
+
+armySetUp :-             % Need to figure out how turns will work/ errors as well.
+  repeat,
+  write("Number of armies left to distribute: "), nl,
   infantryCount(player, X),
-  write(X).
+  write(X), nl,
+  write("Pick a country: "), nl,
+  read(C),
+  country(C),
+  occupied(player, C),
+  write("How many armies do you want to add: "), nl,
+  read(A),
+  A =< X,
+  A > 0,
+  format("~w armies will be added to ~w.", [A, C]), nl, nl,
+  Y is X - A,
+  assert(infantryCount(player, Y)),
+  retract(infantryCount(player, X)),
+  infantryCount(player, 0).
+
+turn :-
+  repeat,
+  write("Would you like to attack? Type end. to end turn."), nl. % Needs to be implemented
+
+countryList(L) :-
+  findall(X, country(X), L).
+
+randomCountries([], _).
+
+randomCountries(L, player) :-
+  random_member(X, L),
+  select(X, L, L2),
+  occupy(player, X), 
+  randomCountries(L2, comp).
+
+randomCountries(L, comp) :-
+  random_member(X, L),
+  select(X, L, L2),
+  occupy(comp, X), 
+  randomCountries(L2, player).
 
 start :-
   write('Welcome to the game of RISK.'),
   nl,
-  occupy(player, venezuela), % Couldn't get the randomCountries part to work. I'll try again.
-  occupy(player, us),
-  occupy(player, paraguay),
-  occupy(player, argentina),
-  occupy(player, columbia),
-  occupy(player, carribean),
-  occupy(player, ecuador),
-  occupy(comp, canada),
-  occupy(comp, mexico),
-  occupy(comp, brazil),
-  occupy(comp, chile),
-  occupy(comp, peru),
-  occupy(comp, bolivia),
-  occupy(comp, uruguay),
+  countryList(CL),
+  randomCountries(CL, player),
   assert(infantryCount(player, 20)), % Starting infantry 
   assert(infantryCount(comp, 20)),
+  nl,
   armySetUp, % Lets each player put armies in occupied positions
+  turn,
   nl.
