@@ -1,5 +1,5 @@
 
-:-  dynamic(occupied/2), dynamic(army/2).
+:-  dynamic(occupied/2), dynamic(army/2), dynamic(infantryCount/2).
 
 :- retractall(occupied(_, _)), retractall(army(_, _)).
 
@@ -8,7 +8,7 @@ country(us).
 country(mexico).
 country(brazil).
 country(peru).
-country(agentina).
+country(argentina).
 country(chile).
 country(paraguay).
 country(uruguay).
@@ -44,7 +44,7 @@ next_to(brazil, uruguay).
 
 next_to(peru, chile).
 next_to(peru, columbia).
-next_to(peru, edcuador).
+next_to(peru, ecuador).
 
 next_to(columbia, edcuador).
 next_to(columbia, venezuela).
@@ -61,7 +61,9 @@ occupy(X, C) :-
   country(C),
   occupied(X, C),
   write('Youre already occupying the location!'),
-  nl.
+  nl,
+  false.
+
 % case where you occupy someone elses territory
 occupy(X, C) :-
   country(C),
@@ -80,8 +82,10 @@ occupy(X, C) :-
   country(C),
   \+ occupied(_, C),
   assert(occupied(X, C)),
-  assert(army(C, 4)),
-  write('occupied empty spot.'),
+  assert(army(C, 1)), 
+  write(X),
+  write(' occupied empty spot: '),
+  write(C),
   nl.
 
 own_north_america(X) :-
@@ -102,4 +106,31 @@ attack(X, C) :-
   is_next_to(C2, C),
   %
   write('TODO not yet implemented'),
+  nl. 
+
+armySetUp :-                % Need to figure out how turns will work
+  write("Number of armies left to distribute: "),
+  infantryCount(player, X),
+  write(X).
+
+start :-
+  write('Welcome to the game of RISK.'),
+  nl,
+  occupy(player, venezuela), % Couldn't get the randomCountries part to work. I'll try again.
+  occupy(player, us),
+  occupy(player, paraguay),
+  occupy(player, argentina),
+  occupy(player, columbia),
+  occupy(player, carribean),
+  occupy(player, ecuador),
+  occupy(comp, canada),
+  occupy(comp, mexico),
+  occupy(comp, brazil),
+  occupy(comp, chile),
+  occupy(comp, peru),
+  occupy(comp, bolivia),
+  occupy(comp, uruguay),
+  assert(infantryCount(player, 20)), % Starting infantry 
+  assert(infantryCount(comp, 20)),
+  armySetUp, % Lets each player put armies in occupied positions
   nl.
