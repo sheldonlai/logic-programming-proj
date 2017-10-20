@@ -3,51 +3,49 @@
 
 :- retractall(occupied(_, _)), retractall(army(_, _)).
 
-country(canada).
-country(us).
-country(mexico).
-country(brazil).
-country(peru).
-country(argentina).
-country(chile).
-country(paraguay).
-country(uruguay).
-country(columbia).
+% tried to balance the amount of countries (now 3 groups + more connectivity)
+
+% Canada
+country(nwt).
+country(alberta).
+country(ontario).
+country(eastCanada).
+
+% USA
+country(alaska).
+country(eastUs).
+country(westUs).
+country(centralAmerica).
+
+% South America
 country(venezuela).
-country(bolivia).
-country(ecuador).
-country(carribean). % for simplicity's sake
+country(peru).
+country(brazil).
+country(argentina).
 
+% Relations
+% easier to make relations
+next_to(X, Y) :-
+  assert(next_to(Y, X)).
 
-next_to(canada, us).
-next_to(mexico, us).
-next_to(mexico, carribean).
+next_to(alaska, nwt).
+next_to(alaska, alberta).
 
+next_to(ontario, eastCanada).
+next_to(ontario, westUs).
+next_to(ontario, eastUs).
 
-next_to(agentina, chile).
-next_to(agentina, paraguay).
-next_to(agentina, uruguay).
-next_to(agentina, bolivia).
+next_to(centralAmerica, westUs).
+next_to(centralAmerica, eastUs).
+next_to(centralAmerica, venezuela).
 
+next_to(venezuela, brazil).
+next_to(venezuela, peru).
 
-next_to(bolivia, brazil).
-next_to(bolivia, chile).
-next_to(bolivia, peru).
-next_to(bolivia, agentina).
-next_to(bolivia, paraguay).
+next_to(peru, brazil).
+next_to(peru, argentina).
 
-next_to(brazil, venezuela).
-next_to(brazil, columbia).
-next_to(brazil, peru).
-next_to(brazil, paraguay).
-next_to(brazil, uruguay).
-
-next_to(peru, chile).
-next_to(peru, columbia).
-next_to(peru, ecuador).
-
-next_to(columbia, edcuador).
-next_to(columbia, venezuela).
+next_to(argentina, brazil).
 
 team(player).
 team(comp).
@@ -90,7 +88,12 @@ occupy(X, C) :-
 
 own_north_america(X) :-
   occupied(X, canada),
-  occupied(X, us).
+  occupied(X, us),
+  occupied(X, mexico),
+  occupied(X, carribean),
+  occupied(X, greenland).
+
+own_south_america(X).
 
 attack(X, C) :-
   country(C),
@@ -108,8 +111,7 @@ attack(X, C) :-
   write('TODO not yet implemented'),
   nl. 
 
-handleFalse(false, E) :-
-  write(E).
+
 
 armySetUp :-             % Need to figure out how turns will work/ errors as well.
   repeat,
@@ -128,6 +130,9 @@ armySetUp :-             % Need to figure out how turns will work/ errors as wel
   Y is X - A,
   assert(infantryCount(player, Y)),
   retract(infantryCount(player, X)),
+  army(C, Armies),
+  ArmiesNew is Armies + A,
+  assert(army(C, ArmiesNew)),
   infantryCount(player, 0).
 
 turn :-
