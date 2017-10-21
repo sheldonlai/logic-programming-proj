@@ -6,22 +6,22 @@
 % tried to balance the amount of countries (now 3 groups + more connectivity)
 
 % Canada
-country(nwt).
-country(alberta).
-country(ontario).
-country(eastCanada).
+country(nwt, canada).
+country(alberta, canada).
+country(ontario, canada).
+country(eastCanada, canada).
 
 % USA
-country(alaska).
-country(eastUs).
-country(westUs).
-country(centralAmerica).
+country(alaska, us).
+country(eastUs, us).
+country(westUs, us).
+country(centralAmerica, us).
 
 % South America
-country(venezuela).
-country(peru).
-country(brazil).
-country(argentina).
+country(venezuela, sa).
+country(peru, sa).
+country(brazil, sa).
+country(argentina, sa).
 
 % Relations
 % easier to make relations
@@ -54,7 +54,7 @@ is_next_to(X, Y) :-
 
 
 occupy(X, C) :-
-  country(C),
+  country(C, _),
   occupied(X, C),
   write('Youre already occupying the location!'),
   nl,
@@ -62,7 +62,7 @@ occupy(X, C) :-
 
 % case where you occupy someone elses territory
 occupy(X, C) :-
-  country(C),
+  country(C, _),
   occupied(X2, C),
   dif(X2, X),
   retract(occupied(X2, C)),
@@ -75,7 +75,7 @@ occupy(X, C) :-
 
 % case where the country is empty
 occupy(X, C) :-
-  country(C),
+  country(C, _),
   \+ occupied(_, C),
   assert(occupied(X, C)),
   assert(army(C, 1)), 
@@ -102,19 +102,30 @@ own_south(X) :-
   occupied(X, peru),
   occupied(X, argentina).
 
-% Getting the continent of the highest number of owned countries.
-%targetSetUp(X) :-
+continent(C, N) :-
+  country(C, N).
 
+countriesLeft(X, N, C) :-
+  country(C, N),
+  \+ occupied(X, C).
 
+% returns number and list of countries left for a continent
+count_countriesLeft(Player, Continent, Count, L) :-
+  findall(Country, countriesLeft(Player, Continent, Country), L),
+  length(L, Count).
+
+target(X, Y, Z, B) :-
+  B1 is min(X, Y),
+  B is min(Z, B1).
 
 attack(X, C) :-
-  country(C),
+  country(C,_),
   dif(X, X2),
   occupied(X2, C),
   write('You cannot attack your own territory').
 
 attack(X, C) :-
-  country(C),
+  country(C,_),
   X = X2,
   occupied(X2, C),
   occupied(X, C2),
@@ -134,7 +145,7 @@ armySetUp :-             % Need to figure out how turns will work/ errors as wel
   write(X), nl,
   write("Pick a country: "), nl,
   read(C),
-  country(C),
+  country(C,_),
   occupied(player, C),
   write("How many armies do you want to add: "), nl,
   read(A),
@@ -144,7 +155,7 @@ armySetUp :-             % Need to figure out how turns will work/ errors as wel
   Y is X - A,
   assert(infantryCount(player, Y)),
   retract(infantryCount(player, X)),
-  army(C, Armies),
+  retract(army(C, Armies)),
   AN is Armies + A,
   assert(army(C, AN)),
   infantryCount(player, 0).
@@ -154,7 +165,7 @@ turn :-
   write("Would you like to attack? Type end. to end turn."), nl. % Needs to be implemented
 
 countryList(L) :-
-  findall(X, country(X), L).
+  findall(X, country(X,_), L).
 
 randomCountries([], _).
 
