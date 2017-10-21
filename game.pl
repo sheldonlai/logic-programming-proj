@@ -25,8 +25,6 @@ country(argentina).
 
 % Relations
 % easier to make relations
-next_to(X, Y) :-
-  assert(next_to(Y, X)).
 
 next_to(alaska, nwt).
 next_to(alaska, alberta).
@@ -86,14 +84,28 @@ occupy(X, C) :-
   write(C),
   nl.
 
-own_north_america(X) :-
-  occupied(X, canada),
-  occupied(X, us),
-  occupied(X, mexico),
-  occupied(X, carribean),
-  occupied(X, greenland).
+own_canada(X) :-
+  occupied(X, nwt),
+  occupied(X, alberta),
+  occupied(X, ontario),
+  occupied(X, eastCanada).
 
-own_south_america(X).
+own_us(X) :-
+  occupied(X, alaska),
+  occupied(X, westUs),
+  occupied(X, eastUs),
+  occupied(X, centralAmerica).
+
+own_south(X) :-
+  occupied(X, venezuela),
+  occupied(X, brazil),
+  occupied(X, peru),
+  occupied(X, argentina).
+
+% Getting the continent of the highest number of owned countries.
+%targetSetUp(X) :-
+
+
 
 attack(X, C) :-
   country(C),
@@ -110,6 +122,8 @@ attack(X, C) :-
   %
   write('TODO not yet implemented'),
   nl. 
+
+%compSetUp :-
 
 
 
@@ -131,8 +145,8 @@ armySetUp :-             % Need to figure out how turns will work/ errors as wel
   assert(infantryCount(player, Y)),
   retract(infantryCount(player, X)),
   army(C, Armies),
-  ArmiesNew is Armies + A,
-  assert(army(C, ArmiesNew)),
+  AN is Armies + A,
+  assert(army(C, AN)),
   infantryCount(player, 0).
 
 turn :-
