@@ -109,9 +109,17 @@ countriesLeft(X, N, C) :-
   country(C, N),
   \+ occupied(X, C).
 
+yourcountries(X, N, C) :-
+  country(C, N),
+  occupied(X, C).
+
 % returns number and list of countries left for a continent
 count_countriesLeft(Player, Continent, Count, L) :-
   findall(Country, countriesLeft(Player, Continent, Country), L),
+  length(L, Count).
+
+count_yourcountries(Player, Continent, Count, L) :-
+  findall(Country, yourcountries(Player, Continent, Country), L),
   length(L, Count).
 
 target(X, Y, Z, B) :-
@@ -134,35 +142,50 @@ attack(X, C) :-
   write('TODO not yet implemented'),
   nl. 
 
-%compSetUp :-
 
-
-
-armySetUp :-             % Need to figure out how turns will work/ errors as well.
+armySetUp(Team) :-             % Need to figure out how turns will work/ errors as well.
+  format("~w is now distributing armies... ~n", [Team]),
   repeat,
   write("Number of armies left to distribute: "), nl,
-  infantryCount(player, X),
+  infantryCount(Team, X),
   write(X), nl,
-  write("Pick a country: "), nl,
+  count_yourcountries(Team,_,_,L),
+  format("Pick a country: ~w", [L]), nl,
   read(C),
   country(C,_),
-  occupied(player, C),
+  occupied(Team, C),
   write("How many armies do you want to add: "), nl,
   read(A),
   A =< X,
   A > 0,
   format("~w armies will be added to ~w.", [A, C]), nl, nl,
   Y is X - A,
-  assert(infantryCount(player, Y)),
-  retract(infantryCount(player, X)),
+  assert(infantryCount(Team, Y)),
+  retract(infantryCount(Team, X)),
   retract(army(C, Armies)),
   AN is Armies + A,
   assert(army(C, AN)),
-  infantryCount(player, 0).
+  infantryCount(Team, 0).
+
+infantryControl :-
+  assert(infantryCount(player, 20)), % Starting infantry 
+  assert(infantryCount(comp, 20)),
+  armySetUp(player),
+  armySetUp(comp).
+
+attackControl :- % needs to be implemented
+  repeat,
+  write("Would you like to attack? Type end. to end turn."), nl,
+  read(X),
+  write(X), nl,
+  true.
+
 
 turn :-
   repeat,
-  write("Would you like to attack? Type end. to end turn."), nl. % Needs to be implemented
+  infantryControl,
+  attackControl.
+
 
 countryList(L) :-
   findall(X, country(X,_), L).
@@ -186,9 +209,21 @@ start :-
   nl,
   countryList(CL),
   randomCountries(CL, player),
-  assert(infantryCount(player, 20)), % Starting infantry 
-  assert(infantryCount(comp, 20)),
   nl,
-  armySetUp, % Lets each player put armies in occupied positions
   turn,
-  nl.
+  count_yourcountries(player,_,0,_); count_yourcountries(comp,_,0,_).
+
+score(X, Score) :-
+  totalArmies(X, N),
+  count_countriesLeft(X, _, Count, _),
+  Score is Count/12*N.
+
+state(X, Armies, C) :-
+  occupied(X, C),
+  army(C, Armies).
+
+totalArmies(X, N) :-
+  team(X),
+  findall(A, state(X, A, _), L),
+  sum_list(L, N).
+
