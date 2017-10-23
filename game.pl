@@ -109,68 +109,195 @@ countriesLeft(X, N, C) :-
   country(C, N),
   \+ occupied(X, C).
 
+yourcountries(X, N, C) :-
+  country(C, N),
+  occupied(X, C).
+
 % returns number and list of countries left for a continent
 count_countriesLeft(Player, Continent, Count, L) :-
   findall(Country, countriesLeft(Player, Continent, Country), L),
+  length(L, Count).
+
+count_yourcountries(Player, Continent, Count, L) :-
+  findall(Country, yourcountries(Player, Continent, Country), L),
   length(L, Count).
 
 target(X, Y, Z, B) :-
   B1 is min(X, Y),
   B is min(Z, B1).
 
-attack(X, C) :-
+% X is the player who is AttackingArmy
+% AttackOn is the territory the player is attacking
+% AttackFrom is where the [player] is attaking From
+% AttackingArmy is the amount of attacking troops
+% DefendingArmy is the amount of defending troops
+
+
+% Exceptiosn
+attack(X, C, _, _, _, _, _) :-
   country(C,_),
   dif(X, X2),
   occupied(X2, C),
   write('You cannot attack your own territory').
 
-attack(X, C) :-
-  country(C,_),
-  X = X2,
-  occupied(X2, C),
-  X = X2,
-  occupied(X, C2),
-  is_next_to(C2, C),
-  army(C, N),
-  army(C2, N2),
-  N2 > N,
-  occupy(X,C),
+attack(_, _, _, A, B, C, D) :-
+  (not(integer(A)); not(integer(B)); not(integer(C)); not(integer(D))),
+  write("All armies and dice should be integers!!!"), nl.
 
+attack(_, _, _, AttackingArmyErr, _, AttackDiceErr, _) :-
+  (X is AttackingArmyErr - AttackDiceErr, X < 1);
+  AttackDiceErr > 3,
+  write("The amount of dice and attacker rolls should be 1 - 3 and smaller than "),
+  write(AttackingArmyErr).
+
+attack(_, _, _, _, DefendingArmyErr, _, DefendDiceErr) :-
+  DefendDiceErr > 2;
+  (Y is DefendingArmyErr - DefendDiceErr, Y < 0),
+  write("The amount of dice and attacker rolls should "),
+  write("be 1 - 2 and smaller or equal to "),
+  write(DefendingArmyErr), nl.
+
+% actual function
+attack(X, AttackOn, AttackFrom, _, _, AttackDice, DefendDice) :-
+  country(AttackOn,_),
+  occupied(X2, AttackOn),
+  dif(X, X2),
+  occupied(X, AttackFrom),
+  is_next_to(AttackFrom, AttackOn),
+  army(AttackOn, N),
+  army(AttackFrom, N2),
+  occupy(X,AttackOn),
+  attack_result(AttackDice, DefendDice, AttackerLoss, DefenderLoss),
+  retract(army(AttackFrom, N)),
+  assert(army(AttackFrom, N - AttackerLoss)),
+  retract(army(AttackOn, N2)),
+  assert(army(AttackOn, N2 - DefenderLoss)),
+  write("Attacker lost "),
+  write(AttackerLoss),
+  write(" troops from the attack, and defender lost "),
+  write(DefenderLoss),
+  write(" troops from the attack."),
   nl.
 
-attack(_, _) :-
-  % unable to atacck the specified region
-  write('Unable to atacck the specified region'),
+
+attack(_, _, _, _, _, _ ,_) :-
+  % unable to atacck the specified region for unknow reason
+  write('Uncaught erroor, unable to atacck the specified region'),
   nl.
-%compSetUp :-
+
+% attack helpers
+
+% get a random result on how many troops are lost
+attack_result(AttackDice, DefendingDice, AttackerLoss, DefenderLoss) :-
+  randset(AttackDice, 6, List1),
+  reverse_list(List1, AttackRolls),
+  write("Attacker rolled: "),
+  write(AttackRolls),
+  nl,
+  randset(DefendingDice, 6, List2),
+  reverse_list(List2, DefendRolls),
+  write("Defender rolled: "),
+  write(DefendRolls),
+  nl,
+  compare_rolls(AttackRolls, DefendRolls, AttackerLoss, DefenderLoss).
+
+
+compare_rolls([], _, 0, 0).
+compare_rolls(_, [], 0, 0).
+
+compare_rolls([H|T],[H2|T2], AttackerLoss, DefenderLoss) :-
+  H > H2,
+  compare_rolls(T,T2, AttackerLoss, Loss2),
+  DefenderLoss is Loss2 + 1.
+
+compare_rolls([_|T],[_|T2], AttackerLoss, DefenderLoss) :-
+  compare_rolls(T,T2, Loss1, DefenderLoss),
+  AttackerLoss is Loss1 + 1.
 
 
 
-armySetUp :-             % Need to figure out how turns will work/ errors as well.
+reverse_list(List, Result) :-
+  reverse_helper(List, [], Result).
+
+reverse_helper([H|T], Acc, Result) :-
+  reverse_helper(T, [H|Acc], Result).
+
+reverse_helper([], Acc, Acc).
+
+
+can_attack_from(Player, AttackOn, Result) :-
+  country(AttackOn,_),
+  occupied(Player2, AttackOn),
+  dif(Player, Player2),
+  findall(From, (occupied(Player, From), is_next_to(Player, From)), Result).
+
+can_attack_from(_, _, _) :-
+  write("You do not own anything adjacent to the territory you want to attack."),
+  nl,
+  false.
+
+
+armySetUp(Team) :-             % Need to figure out how turns will work/ errors as well.
+  format("~w is now distributing armies... ~n", [Team]),
   repeat,
   write("Number of armies left to distribute: "), nl,
-  infantryCount(player, X),
+  infantryCount(Team, X),
   write(X), nl,
-  write("Pick a country: "), nl,
+  count_yourcountries(Team,_,_,L),
+  format("Pick a country: ~w", [L]), nl,
   read(C),
   country(C,_),
-  occupied(player, C),
+  occupied(Team, C),
   write("How many armies do you want to add: "), nl,
   read(A),
   A =< X,
   A > 0,
   format("~w armies will be added to ~w.", [A, C]), nl, nl,
   Y is X - A,
-  assert(infantryCount(player, Y)),
-  retract(infantryCount(player, X)),
+  assert(infantryCount(Team, Y)),
+  retract(infantryCount(Team, X)),
   retract(army(C, Armies)),
   AN is Armies + A,
   assert(army(C, AN)),
-  infantryCount(player, 0).
+  infantryCount(Team, 0).
+
+infantryControl :-
+  assert(infantryCount(player, 20)), % Starting infantry
+  assert(infantryCount(comp, 20)),
+  armySetUp(player),
+  armySetUp(comp).
+
+attackControl :- % needs to be implemented
+  repeat,
+  write("Would you like to attack? Type end. to end turn."), nl,
+  read(X),
+  X = yes,
+  write(X), nl,
+  write("Which territory would you like to attack?"), nl,
+  read(AttackOn),
+  country(AttackOn),
+  write("Which territory would you like to attack?"), nl,
+  can_attack_from(player, AttackOn, From),
+  write("Choose a territory to attack from:"), nl,
+  write(From), nl,
+  write("Choose how many troops you would like to deploy."), nl,
+  write("Max : "),
+  army(From, N),
+  write(N),
+  read(Troops),
+  % RNG for defending troops for computer
+  army(AttackOn, MaxDefending),
+  random(1, MaxDefending, R),
+  attack(player, AttackOn, From, Troops, R),
+  nl,
+  true.
+
 
 turn :-
   repeat,
-  write("Would you like to attack? Type end. to end turn."), nl. % Needs to be implemented
+  infantryControl,
+  attackControl.
+
 
 countryList(L) :-
   findall(X, country(X,_), L).
@@ -194,9 +321,20 @@ start :-
   nl,
   countryList(CL),
   randomCountries(CL, player),
-  assert(infantryCount(player, 20)), % Starting infantry
-  assert(infantryCount(comp, 20)),
   nl,
-  armySetUp, % Lets each player put armies in occupied positions
   turn,
-  nl.
+  count_yourcountries(player,_,0,_); count_yourcountries(comp,_,0,_).
+
+score(X, Score) :-
+  totalArmies(X, N),
+  count_countriesLeft(X, _, Count, _),
+  Score is Count/12*N.
+
+state(X, Armies, C) :-
+  occupied(X, C),
+  army(C, Armies).
+
+totalArmies(X, N) :-
+  team(X),
+  findall(A, state(X, A, _), L),
+  sum_list(L, N).
