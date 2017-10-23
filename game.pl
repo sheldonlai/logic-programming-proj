@@ -1,56 +1,52 @@
 
-:-  dynamic(occupied/2), dynamic(army/2).
+:-  dynamic(occupied/2), dynamic(army/2), dynamic(infantryCount/2).
 
 :- retractall(occupied(_, _)), retractall(army(_, _)).
 
-country(canada).
-country(us).
-country(mexico).
-country(brazil).
-country(peru).
-country(agentina).
-country(chile).
-country(paraguay).
-country(uruguay).
-country(columbia).
-country(venezuela).
-country(bolivia).
-country(ecuador).
-country(carribean). % for simplicity's sake
+% tried to balance the amount of countries (now 3 groups + more connectivity)
 
+% Canada
+country(nwt, canada).
+country(alberta, canada).
+country(ontario, canada).
+country(eastCanada, canada).
 
-next_to(canada, us).
-next_to(mexico, us).
-next_to(mexico, carribean).
+% USA
+country(alaska, us).
+country(eastUs, us).
+country(westUs, us).
+country(centralAmerica, us).
 
+% South America
+country(venezuela, sa).
+country(peru, sa).
+country(brazil, sa).
+country(argentina, sa).
 
-next_to(agentina, chile).
-next_to(agentina, paraguay).
-next_to(agentina, uruguay).
-next_to(agentina, bolivia).
+% Relations
+% easier to make relations
 
+next_to(alaska, nwt).
+next_to(alaska, alberta).
 
-next_to(bolivia, brazil).
-next_to(bolivia, chile).
-next_to(bolivia, peru).
-next_to(bolivia, agentina).
-next_to(bolivia, paraguay).
+next_to(ontario, eastCanada).
+next_to(ontario, westUs).
+next_to(ontario, eastUs).
 
-next_to(brazil, venezuela).
-next_to(brazil, columbia).
-next_to(brazil, peru).
-next_to(brazil, paraguay).
-next_to(brazil, uruguay).
+next_to(centralAmerica, westUs).
+next_to(centralAmerica, eastUs).
+next_to(centralAmerica, venezuela).
 
-next_to(peru, chile).
-next_to(peru, columbia).
-next_to(peru, edcuador).
+next_to(venezuela, brazil).
+next_to(venezuela, peru).
 
-next_to(columbia, edcuador).
-next_to(columbia, venezuela).
+next_to(peru, brazil).
+next_to(peru, argentina).
 
+next_to(argentina, brazil).
 
-
+team(player).
+team(comp).
 
 is_next_to(X, Y) :-
   next_to(X, Y);
@@ -58,13 +54,15 @@ is_next_to(X, Y) :-
 
 
 occupy(X, C) :-
-  country(C),
+  country(C, _),
   occupied(X, C),
   write('Youre already occupying the location!'),
-  nl.
+  nl,
+  false.
+
 % case where you occupy someone elses territory
 occupy(X, C) :-
-  country(C),
+  country(C, _),
   occupied(X2, C),
   dif(X2, X),
   retract(occupied(X2, C)),
@@ -77,34 +75,128 @@ occupy(X, C) :-
 
 % case where the country is empty
 occupy(X, C) :-
-  country(C),
+  country(C, _),
   \+ occupied(_, C),
   assert(occupied(X, C)),
-  assert(army(C, 4)),
-  write('occupied empty spot.'),
+  assert(army(C, 1)),
+  write(X),
+  write(' occupied empty spot: '),
+  write(C),
   nl.
 
-own_north_america(X) :-
-  occupied(X, canada),
-  occupied(X, us).
+own_canada(X) :-
+  occupied(X, nwt),
+  occupied(X, alberta),
+  occupied(X, ontario),
+  occupied(X, eastCanada).
+
+own_us(X) :-
+  occupied(X, alaska),
+  occupied(X, westUs),
+  occupied(X, eastUs),
+  occupied(X, centralAmerica).
+
+own_south(X) :-
+  occupied(X, venezuela),
+  occupied(X, brazil),
+  occupied(X, peru),
+  occupied(X, argentina).
+
+continent(C, N) :-
+  country(C, N).
+
+countriesLeft(X, N, C) :-
+  country(C, N),
+  \+ occupied(X, C).
+
+% returns number and list of countries left for a continent
+count_countriesLeft(Player, Continent, Count, L) :-
+  findall(Country, countriesLeft(Player, Continent, Country), L),
+  length(L, Count).
+
+target(X, Y, Z, B) :-
+  B1 is min(X, Y),
+  B is min(Z, B1).
 
 attack(X, C) :-
-  country(C),
+  country(C,_),
   dif(X, X2),
   occupied(X2, C),
   write('You cannot attack your own territory').
 
 attack(X, C) :-
-  country(C),
+  country(C,_),
+  X = X2,
   occupied(X2, C),
   X = X2,
   occupied(X, C2),
   is_next_to(C2, C),
-  %
-  write('TODO not yet implemented'),
+  army(C, N),
+  army(C2, N2),
+  N2 > N,
+  occupy(X,C),
+
   nl.
 
-set_army(C, A) :-
-  country(C),
-  retract(army(C, A)),
-  assert(army(C, A)).
+attack(_, _) :-
+  % unable to atacck the specified region
+  write('Unable to atacck the specified region'),
+  nl.
+%compSetUp :-
+
+
+
+armySetUp :-             % Need to figure out how turns will work/ errors as well.
+  repeat,
+  write("Number of armies left to distribute: "), nl,
+  infantryCount(player, X),
+  write(X), nl,
+  write("Pick a country: "), nl,
+  read(C),
+  country(C,_),
+  occupied(player, C),
+  write("How many armies do you want to add: "), nl,
+  read(A),
+  A =< X,
+  A > 0,
+  format("~w armies will be added to ~w.", [A, C]), nl, nl,
+  Y is X - A,
+  assert(infantryCount(player, Y)),
+  retract(infantryCount(player, X)),
+  retract(army(C, Armies)),
+  AN is Armies + A,
+  assert(army(C, AN)),
+  infantryCount(player, 0).
+
+turn :-
+  repeat,
+  write("Would you like to attack? Type end. to end turn."), nl. % Needs to be implemented
+
+countryList(L) :-
+  findall(X, country(X,_), L).
+
+randomCountries([], _).
+
+randomCountries(L, player) :-
+  random_member(X, L),
+  select(X, L, L2),
+  occupy(player, X),
+  randomCountries(L2, comp).
+
+randomCountries(L, comp) :-
+  random_member(X, L),
+  select(X, L, L2),
+  occupy(comp, X),
+  randomCountries(L2, player).
+
+start :-
+  write('Welcome to the game of RISK.'),
+  nl,
+  countryList(CL),
+  randomCountries(CL, player),
+  assert(infantryCount(player, 20)), % Starting infantry
+  assert(infantryCount(comp, 20)),
+  nl,
+  armySetUp, % Lets each player put armies in occupied positions
+  turn,
+  nl.
