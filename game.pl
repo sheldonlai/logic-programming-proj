@@ -136,29 +136,33 @@ target(X, Y, Z, B) :-
 % Exceptiosn
 attack(X, C, _, _, _, _, _) :-
   country(C,_),
-  dif(X, X2),
+  X = X2,
   occupied(X2, C),
-  write('You cannot attack your own territory').
+  write('You cannot attack your own territory'),
+  fail.
 
 attack(_, _, _, A, B, C, D) :-
   (not(integer(A)); not(integer(B)); not(integer(C)); not(integer(D))),
-  write("All armies and dice should be integers!!!"), nl.
+  write("All armies and dice should be integers!!!"), nl,
+  fail.
 
 attack(_, _, _, AttackingArmyErr, _, AttackDiceErr, _) :-
   (X is AttackingArmyErr - AttackDiceErr, X < 1);
   AttackDiceErr > 3,
   write("The amount of dice and attacker rolls should be 1 - 3 and smaller than "),
-  write(AttackingArmyErr).
+  write(AttackingArmyErr),
+  fail.
 
 attack(_, _, _, _, DefendingArmyErr, _, DefendDiceErr) :-
   DefendDiceErr > 2;
   (Y is DefendingArmyErr - DefendDiceErr, Y < 0),
   write("The amount of dice and attacker rolls should "),
   write("be 1 - 2 and smaller or equal to "),
-  write(DefendingArmyErr), nl.
+  write(DefendingArmyErr), nl,
+  fail.
 
 % actual function
-attack(X, AttackOn, AttackFrom, _, _, AttackDice, DefendDice) :-
+attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
   country(AttackOn,_),
   occupied(X2, AttackOn),
   dif(X, X2),
@@ -166,12 +170,21 @@ attack(X, AttackOn, AttackFrom, _, _, AttackDice, DefendDice) :-
   is_next_to(AttackFrom, AttackOn),
   army(AttackOn, N),
   army(AttackFrom, N2),
-  occupy(X,AttackOn),
   attack_result(AttackDice, DefendDice, AttackerLoss, DefenderLoss),
-  retract(army(AttackFrom, N)),
-  assert(army(AttackFrom, N - AttackerLoss)),
+  N3 is N2 - DefenderLoss,
   retract(army(AttackOn, N2)),
-  assert(army(AttackOn, N2 - DefenderLoss)),
+  (
+    N3 > 0,
+    set_army(AttackOn, N3),
+    NewAttackerArmy is N - AttackerLoss,
+    set_army(AttackFrom, NewAttackerArmy)
+  ;
+    occupy(X, AttackOn),
+    NewAttackerArmy is AttackingArmy - AttackerLoss,
+    set_army(AttackOn, NewAttackerArmy),
+    set_army(AttackFrom, N - AttackingArmy)
+  ),
+
   write("Attacker lost "),
   write(AttackerLoss),
   write(" troops from the attack, and defender lost "),
@@ -180,10 +193,10 @@ attack(X, AttackOn, AttackFrom, _, _, AttackDice, DefendDice) :-
   nl.
 
 
-attack(_, _, _, _, _, _ ,_) :-
-  % unable to atacck the specified region for unknow reason
-  write('Uncaught erroor, unable to atacck the specified region'),
-  nl.
+% attack(_, _, _, _, _, _ ,_) :-
+%   % unable to atacck the specified region for unknow reason
+%   write('Uncaught erroor, unable to atacck the specified region'),
+%   nl, fail.
 
 % attack helpers
 
@@ -214,6 +227,9 @@ compare_rolls([_|T],[_|T2], AttackerLoss, DefenderLoss) :-
   compare_rolls(T,T2, Loss1, DefenderLoss),
   AttackerLoss is Loss1 + 1.
 
+set_army(Place, Amount) :-
+  retractall(army(Place, _)),
+  assert(army(Place, Amount)).
 
 
 reverse_list(List, Result) :-
@@ -229,7 +245,7 @@ can_attack_from(Player, AttackOn, Result) :-
   country(AttackOn,_),
   occupied(Player2, AttackOn),
   dif(Player, Player2),
-  findall(From, (occupied(Player, From), is_next_to(Player, From)), Result).
+  findall(From, (occupied(Player, From), is_next_to(AttackOn, From)), Result).
 
 can_attack_from(_, _, _) :-
   write("You do not own anything adjacent to the territory you want to attack."),
@@ -269,28 +285,33 @@ infantryControl :-
 
 attackControl :- % needs to be implemented
   repeat,
-  write("Would you like to attack? Type end. to end turn."), nl,
+  write("Would you like to attack? Type 'yes.' to attack, Type 'end.' to end turn."), nl,
   read(X),
-  X = yes,
-  write(X), nl,
-  write("Which territory would you like to attack?"), nl,
-  read(AttackOn),
-  country(AttackOn),
-  write("Which territory would you like to attack?"), nl,
-  can_attack_from(player, AttackOn, From),
-  write("Choose a territory to attack from:"), nl,
-  write(From), nl,
-  write("Choose how many troops you would like to deploy."), nl,
-  write("Max : "),
-  army(From, N),
-  write(N),
-  read(Troops),
-  % RNG for defending troops for computer
-  army(AttackOn, MaxDefending),
-  random(1, MaxDefending, R),
-  attack(player, AttackOn, From, Troops, R),
-  nl,
-  true.
+  (
+    X == yes ->
+    write(X), nl,
+    write("Which territory would you like to attack?"), nl,
+    read(AttackOn),
+    country(AttackOn, _),
+    write("Which territory would you like to attack?"), nl,
+    can_attack_from(player, AttackOn, From),
+    write("Choose a territory to attack from:"), nl,
+    write(From), nl,
+    write("Choose how many troops you would like to deploy."), nl,
+    write("Max : "),
+    army(From, N),
+    write(N),
+    read(Troops),
+    % RNG for defending troops for computer
+    army(AttackOn, MaxDefending),
+    random(1, MaxDefending, R),
+    attack(player, AttackOn, From, Troops, R, min(3, N), min(3,MaxDefending)),
+    nl,
+    fail
+    ;
+    write("terminating attack loop"), nl,
+    !
+  ).
 
 
 turn :-
