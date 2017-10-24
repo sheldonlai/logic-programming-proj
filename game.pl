@@ -171,26 +171,30 @@ attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
   army(AttackOn, N),
   army(AttackFrom, N2),
   attack_result(AttackDice, DefendDice, AttackerLoss, DefenderLoss),
-  N3 is N2 - DefenderLoss,
-  retract(army(AttackOn, N2)),
-  (
-    N3 > 0,
-    set_army(AttackOn, N3),
-    NewAttackerArmy is N - AttackerLoss,
-    set_army(AttackFrom, NewAttackerArmy)
-  ;
-    occupy(X, AttackOn),
-    NewAttackerArmy is AttackingArmy - AttackerLoss,
-    set_army(AttackOn, NewAttackerArmy),
-    set_army(AttackFrom, N - AttackingArmy)
-  ),
-
   write("Attacker lost "),
   write(AttackerLoss),
   write(" troops from the attack, and defender lost "),
   write(DefenderLoss),
   write(" troops from the attack."),
-  nl.
+  nl,
+  N3 is N - DefenderLoss,
+
+  (N3 > 0 ->
+    set_army(AttackOn, N3),
+    NewAttackingArmy is N - AttackerLoss,
+    set_army(AttackFrom, NewAttackingArmy)
+  ;
+    occupy(X, AttackOn),
+    NewAttackOnArmy is AttackingArmy - AttackerLoss,
+    set_army(AttackOn, NewAttackOnArmy),
+    write(AttackOn), write(" now has "), write(NewAttackOnArmy),
+    write(" troops."), nl,
+    NewAttackingArmy is N2 - AttackingArmy,
+    write(AttackFrom), write(" now has "), write(NewAttackingArmy),
+    write(" troops."), nl,
+    set_army(AttackFrom, NewAttackingArmy)
+  ).
+
 
 
 % attack(_, _, _, _, _, _ ,_) :-
@@ -200,7 +204,12 @@ attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
 
 % attack helpers
 
-% get a random result on how many troops are lost
+/**
+ * compare_rolls takes in two sorted descending lists and compare which each
+ * element with the rolls until one of the list runs out of elements
+ * AttackerLoss is the amount of times where List2[i] >= List1[i]
+ * DefenderLoss is the amount of times where List2[i] < List1[i]
+ */
 attack_result(AttackDice, DefendingDice, AttackerLoss, DefenderLoss) :-
   randset(AttackDice, 6, List1),
   reverse_list(List1, AttackRolls),
@@ -215,9 +224,14 @@ attack_result(AttackDice, DefendingDice, AttackerLoss, DefenderLoss) :-
   compare_rolls(AttackRolls, DefendRolls, AttackerLoss, DefenderLoss).
 
 
+/**
+ * compare_rolls takes in two sorted descending lists and compare which each
+ * element with the rolls until one of the list runs out of elements
+ * AttackerLoss is the amount of times where List2[i] >= List1[i]
+ * DefenderLoss is the amount of times where List2[i] < List1[i]
+ */
 compare_rolls([], _, 0, 0).
 compare_rolls(_, [], 0, 0).
-
 compare_rolls([H|T],[H2|T2], AttackerLoss, DefenderLoss) :-
   H > H2,
   compare_rolls(T,T2, AttackerLoss, Loss2),
@@ -227,11 +241,16 @@ compare_rolls([_|T],[_|T2], AttackerLoss, DefenderLoss) :-
   compare_rolls(T,T2, Loss1, DefenderLoss),
   AttackerLoss is Loss1 + 1.
 
+/**
+ * A helper function to free the previous and set the new army count
+ */
 set_army(Place, Amount) :-
   retractall(army(Place, _)),
   assert(army(Place, Amount)).
 
-
+/**
+ * List utills to reverse the list as described in its name
+ */
 reverse_list(List, Result) :-
   reverse_helper(List, [], Result).
 
@@ -240,6 +259,14 @@ reverse_helper([H|T], Acc, Result) :-
 
 reverse_helper([], Acc, Acc).
 
+
+/**
+ * Show territories that you can attack the specified target from
+ */
+can_attack_from(Player, AttackOn, _):-
+  occupied(Player, AttackOn),
+  write('You cannot attack your own territory'), nl,
+  fail.
 
 can_attack_from(Player, AttackOn, Result) :-
   country(AttackOn,_),
@@ -252,6 +279,10 @@ can_attack_from(_, _, _) :-
   nl,
   false.
 
+
+/**
+ * Show territories that you can attack on
+ */
 can_attack_on(Player, Result) :-
   occupied(Player, X),
   army(X, N),
@@ -260,11 +291,28 @@ can_attack_on(Player, Result) :-
   findall(
     On,
     (
-      is_next_to(On, X)
-
+      is_next_to(On, X),
+      not(occupied(Player, On))
     ),
     Result
   ).
+
+% attack helper ends
+
+% print helper
+print_territories_armies([]).
+
+print_territories_armies([H|T]) :-
+  country(H, _),
+  army(H,N),
+  write(H), write(" has "), write(N), write(" troops."), nl,
+  print_territories_armies(T).
+
+get_defending_army(0, 1).
+get_defending_army(1, 1).
+get_defending_army(Max, R):-
+  random(1, Max, R).
+
 
 armySetUp(Team) :-             % Need to figure out how turns will work/ errors as well.
   format("~w is now distributing armies... ~n", [Team]),
@@ -302,39 +350,37 @@ attackControl :- % needs to be implemented
   read(X),
   (
     X == yes ->
-    write(X), nl,
     write("Which territory would you like to attack?"), nl,
     can_attack_on(player, AttackList),
-    write(AttackList), nl,
+    print_territories_armies(AttackList),
     read(AttackOn),
     country(AttackOn, _),
     can_attack_from(player, AttackOn, FromList),
     write("Choose a territory to attack from:"), nl,
-    write(FromList), nl,
+    print_territories_armies(FromList),
     read(From),
+    country(From, _),
     write("Choose how many troops you would like to deploy."), nl,
-    write("Max : "),
     army(From, N),
-    write(N),
     read(Troops),
     % RNG for defending troops for computer
     army(AttackOn, MaxDefending),
-    random(1, MaxDefending, R),
     DefendDice is min(2,MaxDefending),
     AttackDice is min(3, N),
-    attack(player, AttackOn, From, Troops, R, AttackDice, DefendDice),
-    nl,
-    fail
+    attack(player, AttackOn, From, Troops, MaxDefending, AttackDice, DefendDice),
+    nl
     ;
     write("terminating attack loop"), nl,
     !
-  ).
+  ),!.
 
 
 turn :-
   repeat,
   infantryControl,
   attackControl.
+  % TODO : infantryControl Comp
+  % TODO : attackControl Comp
 
 
 countryList(L) :-
