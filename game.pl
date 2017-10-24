@@ -274,6 +274,7 @@ can_attack_from(_, _, _) :-
   nl,
   false.
 
+
 can_move_from(Player, MoveOn, Result) :-
   country(MoveOn,_),
   occupied(Player, MoveOn),
@@ -317,6 +318,21 @@ moveControl(Team) :-
     !
     ).
 
+can_attack_on(Player, Result) :-
+  occupied(Player, X),
+  army(X, N),
+  N > 1,
+  country(X, _),
+  findall(
+    On,
+    (
+      is_next_to(On, X)
+
+    ),
+    Result
+  ).
+
+
 armySetUp(Team) :-             % Need to figure out how turns will work/ errors as well.
   format("~w is now distributing armies... ~n", [Team]),
   repeat,
@@ -358,12 +374,14 @@ attackControl :- % needs to be implemented
     X == yes ->
     write(X), nl,
     write("Which territory would you like to attack?"), nl,
+    can_attack_on(player, AttackList),
+    write(AttackList), nl,
     read(AttackOn),
     country(AttackOn, _),
-    write("Which territory would you like to attack?"), nl,
-    can_attack_from(player, AttackOn, From),
+    can_attack_from(player, AttackOn, FromList),
     write("Choose a territory to attack from:"), nl,
-    write(From), nl,
+    write(FromList), nl,
+    read(From),
     write("Choose how many troops you would like to deploy."), nl,
     write("Max : "),
     army(From, N),
@@ -372,7 +390,9 @@ attackControl :- % needs to be implemented
     % RNG for defending troops for computer
     army(AttackOn, MaxDefending),
     random(1, MaxDefending, R),
-    attack(player, AttackOn, From, Troops, R, min(3, N), min(3,MaxDefending)),
+    DefendDice is min(2,MaxDefending),
+    AttackDice is min(3, N),
+    attack(player, AttackOn, From, Troops, R, AttackDice, DefendDice),
     nl,
     fail
     ;
