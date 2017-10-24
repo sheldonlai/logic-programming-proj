@@ -368,7 +368,7 @@ attackControl :- % needs to be implemented
     DefendDice is min(2,MaxDefending),
     AttackDice is min(3, N),
     attack(player, AttackOn, From, Troops, MaxDefending, AttackDice, DefendDice),
-    nl
+    nla
     ;
     write("terminating attack loop"), nl,
     !
