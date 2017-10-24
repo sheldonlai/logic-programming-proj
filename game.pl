@@ -450,6 +450,12 @@ attackControlHelper :-
 
 attack_control_ai :-
   can_attack_on(comp, AttList),
+  length(AttList, Len),
+  ( Len == 0 ->
+    write("comp will not attack."), nl,
+    fail;
+    true
+  ),
   choose_most_vulnerable(AttList, AttackOn),
   can_attack_from(comp, AttackOn, FromList),
   choose_strongest(FromList, AttackFrom),
@@ -516,7 +522,6 @@ turn :-
   infantryControl(player),
   attackControl,
   % TODO : infantryControl Comp
-  % TODO : attackControl Comp
   attack_control_ai.
 
 countryList(L) :-
