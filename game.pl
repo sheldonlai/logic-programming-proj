@@ -32,6 +32,8 @@ next_to(alaska, alberta).
 next_to(ontario, eastCanada).
 next_to(ontario, westUs).
 next_to(ontario, eastUs).
+next_to(ontario, alberta).
+next_to(ontario, nwt).
 
 next_to(centralAmerica, westUs).
 next_to(centralAmerica, eastUs).
@@ -78,29 +80,45 @@ occupy(X, C) :-
   country(C, _),
   \+ occupied(_, C),
   assert(occupied(X, C)),
-  assert(army(C, 1)),
-  write(X),
-  write(' occupied empty spot: '),
-  write(C),
-  nl.
+  assert(army(C, 1)).
+  %write(X),
+  %write(' occupied empty spot: '),
+  %write(C),
+  %nl.
 
-own_canada(X) :-
-  occupied(X, nwt),
-  occupied(X, alberta),
-  occupied(X, ontario),
-  occupied(X, eastCanada).
+own_canada(Team) :-
+  occupied(Team, nwt),
+  occupied(Team, alberta),
+  occupied(Team, ontario),
+  occupied(Team, eastCanada).
 
-own_us(X) :-
-  occupied(X, alaska),
-  occupied(X, westUs),
-  occupied(X, eastUs),
-  occupied(X, centralAmerica).
+own_us(Team) :-
+  occupied(Team, alaska),
+  occupied(Team, westUs),
+  occupied(Team, eastUs),
+  occupied(Team, centralAmerica).
 
-own_south(X) :-
-  occupied(X, venezuela),
-  occupied(X, brazil),
-  occupied(X, peru),
-  occupied(X, argentina).
+own_south(Team) :-
+  occupied(Team, venezuela),
+  occupied(Team, brazil),
+  occupied(Team, peru),
+  occupied(Team, argentina).
+
+bonus(Team, SouthBonus) :-
+  team(Team),
+  own_south(Team),
+  SouthBonus is 4.
+
+bonus(Team, CanadaBonus) :-
+  team(Team),
+  own_canada(Team),
+  CanadaBonus is 4.
+
+bonus(Team, USBonus) :-
+  team(Team),
+  own_us(Team),
+  USBonus is 4.
+
 
 continent(C, N) :-
   country(C, N).
@@ -231,6 +249,10 @@ set_army(Place, Amount) :-
   retractall(army(Place, _)),
   assert(army(Place, Amount)).
 
+set_Infantry(Team, Amount) :-
+  retractall(infantryCount(Team, _)),
+  assert(infantryCount(Team, Amount)).
+
 
 reverse_list(List, Result) :-
   reverse_helper(List, [], Result).
@@ -252,11 +274,53 @@ can_attack_from(_, _, _) :-
   nl,
   false.
 
+can_move_from(Player, MoveOn, Result) :-
+  country(MoveOn,_),
+  occupied(Player, MoveOn),
+  army(MoveOn, _),
+  findall(From, (occupied(Player, From), is_next_to(MoveOn, From), army(From, Armies), Armies > 1), Result).
+
+your_armies(Player, Result) :-
+  findall([Country | Armies] ,(state(Player, Armies, Country), occupied(Player, Country)), Result). 
+
+moveControl(Team) :- 
+  repeat,
+  write("Would you like to move your armies? "),
+  read(X), nl,
+    (
+    X == yes ->
+    your_armies(Team, Result),
+    write("Which country would you like to move your armies to?"), nl,
+    write(Result), nl,
+    read(Country),
+    country(Country,_),
+    can_move_from(Team, Country, R),
+    length(R, Count),
+    Count > 0,
+    format("Which country do you want to move from? ~w", [R]), nl,
+    read(MoveFrom),
+    write("Armies to move : "),
+    army(MoveFrom, Armies), 
+    read(ArmiesMove),
+    ArmiesMove =< Armies,
+    ArmiesMove > 0,
+    army(Country, Prev),
+    AddedArmies is Prev + ArmiesMove,
+    RemovedArmies is Armies - ArmiesMove,
+    set_army(Country, AddedArmies),
+    set_army(MoveFrom, RemovedArmies),
+    write("Now you have: "), nl,
+    your_armies(Team, New),
+    write(New)
+    ;
+    write("terminating moveControl"), nl,
+    !
+    ).
 
 armySetUp(Team) :-             % Need to figure out how turns will work/ errors as well.
   format("~w is now distributing armies... ~n", [Team]),
   repeat,
-  write("Number of armies left to distribute: "), nl,
+  write("Number of armies left to distribute: "),
   infantryCount(Team, X),
   write(X), nl,
   count_yourcountries(Team,_,_,L),
@@ -265,23 +329,26 @@ armySetUp(Team) :-             % Need to figure out how turns will work/ errors 
   country(C,_),
   occupied(Team, C),
   write("How many armies do you want to add: "), nl,
-  read(A),
+  read(A), nl,
   A =< X,
   A > 0,
-  format("~w armies will be added to ~w.", [A, C]), nl, nl,
   Y is X - A,
-  assert(infantryCount(Team, Y)),
-  retract(infantryCount(Team, X)),
-  retract(army(C, Armies)),
-  AN is Armies + A,
-  assert(army(C, AN)),
+  set_Infantry(Team, Y),
+  army(C, Armies),
+  NewArmies is Armies + A,
+  set_army(C, NewArmies),
+  your_armies(Team , Result),
+  write("Your Armies ==> [Country | Armies]"), nl,
+  write(Result), nl, nl,
   infantryCount(Team, 0).
 
-infantryControl :-
-  assert(infantryCount(player, 20)), % Starting infantry
-  assert(infantryCount(comp, 20)),
-  armySetUp(player),
-  armySetUp(comp).
+infantryControl(Team) :-
+  count_yourcountries(Team, _, C, _),
+  findall(Bonus, bonus(Team, Bonus), Result),
+  sum_list(Result, Sum),
+  Total is Sum + C,
+  set_Infantry(Team, Total),
+  armySetUp(Team).
 
 attackControl :- % needs to be implemented
   repeat,
@@ -314,9 +381,17 @@ attackControl :- % needs to be implemented
   ).
 
 
+% setUpTurn is to set initial Infantry Values.
+
+setUpTurn :-
+  set_Infantry(player, 25),
+  set_Infantry(comp, 25),
+  armySetUp(player),
+  turn.
+
 turn :-
   repeat,
-  infantryControl,
+  infantryControl(player),
   attackControl.
 
 
@@ -338,12 +413,17 @@ randomCountries(L, comp) :-
   randomCountries(L2, player).
 
 start :-
-  write('Welcome to the game of RISK.'),
-  nl,
+  write('Welcome to the game of RISK.'), nl, nl,
+  write('Randomizing Countries....'), nl, nl,
   countryList(CL),
   randomCountries(CL, player),
-  nl,
-  turn,
+  your_armies(player, P),
+  write("Player's Countries ==> "), nl,
+  write(P), nl, nl,
+  your_armies(comp, C),
+  write("Computer's Countries ==>"), nl,
+  write(C), nl, nl,
+  setUpTurn,
   count_yourcountries(player,_,0,_); count_yourcountries(comp,_,0,_).
 
 score(X, Score) :-
