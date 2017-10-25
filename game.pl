@@ -1,7 +1,7 @@
 
 :-  dynamic(occupied/2), dynamic(army/2), dynamic(infantryCount/2).
 
-:- retractall(occupied(_, _)), retractall(army(_, _)).
+% :- retractall(occupied(_, _)), retractall(army(_, _)).
 
 % tried to balance the amount of countries (now 3 groups + more connectivity)
 
@@ -58,7 +58,8 @@ is_next_to(X, Y) :-
 occupy(X, C) :-
   country(C, _),
   occupied(X, C),
-  write('Youre already occupying the location!'),
+  write(X),
+  write(' is already occupying the location!'),
   nl,
   false.
 
@@ -69,9 +70,10 @@ occupy(X, C) :-
   dif(X2, X),
   retract(occupied(X2, C)),
   assert(occupied(X, C)),
-  write('You have occupied the country: '),
+  write(X),
+  write(' have occupied the country: '),
   write(C),
-  write(', from player: '),
+  write(', from: '),
   write(X2),
   nl.
 
@@ -165,7 +167,7 @@ attack(_, _, _, A, B, C, D) :-
   fail.
 
 attack(_, _, _, AttackingArmyErr, _, AttackDiceErr, _) :-
-  (X is AttackingArmyErr - AttackDiceErr, X < 1);
+  (X is AttackingArmyErr - AttackDiceErr, X =< 1);
   AttackDiceErr > 3,
   write("The amount of dice and attacker rolls should be 1 - 3 and smaller than "),
   write(AttackingArmyErr),
@@ -188,10 +190,13 @@ attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
   is_next_to(AttackFrom, AttackOn),
   army(AttackOn, N),
   army(AttackFrom, N2),
-  attack_result(AttackDice, DefendDice, AttackerLoss, DefenderLoss),
-  write("Attacker lost "),
+  attack_result(AttackDice, DefendDice, AttackerLoss, DefenderLoss), !,
+  write(X),
+  write(" lost "),
   write(AttackerLoss),
-  write(" troops from the attack, and defender lost "),
+  write(" troops from the attack, and "),
+  write(X2),
+  write(" lost "),
   write(DefenderLoss),
   write(" troops from the attack."),
   nl,
@@ -213,15 +218,10 @@ attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
     NewAttackingArmy is N2 - AttackingArmy,
     write(AttackFrom), write(" now has "), write(NewAttackingArmy),
     write(" troops."), nl,
-    set_army(AttackFrom, NewAttackingArmy)
+    set_army(AttackFrom, NewAttackingArmy),
+    nl,nl,
+    moveControl(X)
   ).
-
-
-
-% attack(_, _, _, _, _, _ ,_) :-
-%   % unable to atacck the specified region for unknow reason
-%   write('Uncaught erroor, unable to atacck the specified region'),
-%   nl, fail.
 
 % attack helpers
 
@@ -449,6 +449,7 @@ attackControlHelper :-
   nl.
 
 attack_control_ai :-
+  nl,nl,
   can_attack_on(comp, AttList),
   length(AttList, Len),
   ( Len == 0 ->
@@ -465,9 +466,10 @@ attack_control_ai :-
   MaxDefendingDice is min(2, MaxDefending),
   repeat,
   write("How dice would you like to roll? Max:"), write(MaxDefendingDice), nl,
+  read(DefnedingDice),
   army(AttackFrom, AttackFromArmy),
   MaxAttackArmy = AttackFromArmy - 1,
-  read(DefnedingDice),
+
   AttackDice is min(3, MaxAttackArmy),
   attack(comp, AttackOn, AttackFrom, MaxAttackArmy,
     MaxDefending, AttackDice, DefnedingDice).
@@ -478,7 +480,10 @@ attack_control_ai :-
  * This method chooses the largest army from a list of territories
  */
 choose_strongest(List, Result):-
-  choose_most_vulnerable_helper(List, 1000 ,Result).
+  choose_strongest_helper(List, none, Result).
+
+choose_strongest_helper([H|T], none, Result):-
+  choose_strongest_helper(T, H, Result).
 
 choose_strongest_helper([], Acc, Acc).
 choose_strongest_helper([H|T], Acc, Result):-
@@ -494,7 +499,10 @@ choose_strongest_helper([_|T], Acc, Result):-
  * This method chooses the smallest army from a list of territories
  */
 choose_most_vulnerable(List, Result) :-
-  choose_most_vulnerable_helper(List, 1000 ,Result).
+  choose_most_vulnerable_helper(List, none ,Result).
+
+choose_most_vulnerable_helper([H|T], none, Result):-
+  choose_most_vulnerable_helper(T, H, Result).
 
 choose_most_vulnerable_helper([], Acc, Acc).
 
