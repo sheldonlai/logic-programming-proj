@@ -120,8 +120,8 @@ bonus(Team, USBonus) :-
   USBonus is 4.
 
 
-continent(C, N) :-
-  country(C, N).
+continent(N) :-
+  country(_, N).
 
 countriesLeft(X, N, C) :-
   country(C, N),
@@ -131,6 +131,10 @@ yourcountries(X, N, C) :-
   country(C, N),
   occupied(X, C).
 
+nearbyAICountry(Country, AI) :-
+	occupied(comp, AI),
+	is_next_to(Country, AI).
+
 % returns number and list of countries left for a continent
 count_countriesLeft(Player, Continent, Count, L) :-
   findall(Country, countriesLeft(Player, Continent, Country), L),
@@ -139,6 +143,7 @@ count_countriesLeft(Player, Continent, Count, L) :-
 count_yourcountries(Player, Continent, Count, L) :-
   findall(Country, yourcountries(Player, Continent, Country), L),
   length(L, Count).
+
 
 target(X, Y, Z, B) :-
   B1 is min(X, Y),
@@ -382,6 +387,18 @@ get_defending_army(1, 1).
 get_defending_army(Max, R):-
   random(1, Max, R).
 
+aiSetup(Country, Armies) :-
+	nearbyAICountry(Country, Nearby),
+	infantryCount(comp, X),
+	army(Nearby, Prev),
+	Y is X - Armies,
+	set_Infantry(comp, Y),
+	NA is Armies + Prev,
+	set_army(Nearby, NA),
+	your_armies(comp , Result),
+    write("Computers Armies ==> [Country | Armies]"), nl,
+    write(Result), nl, nl.
+
 
 armySetUp(Team) :-             % Need to figure out how turns will work/ errors as well.
   format("~w is now distributing armies... ~n", [Team]),
@@ -403,6 +420,7 @@ armySetUp(Team) :-             % Need to figure out how turns will work/ errors 
   army(C, Armies),
   NewArmies is Armies + A,
   set_army(C, NewArmies),
+  once(aiSetup(C, A)),
   your_armies(Team , Result),
   write("Your Armies ==> [Country | Armies]"), nl,
   write(Result), nl, nl,
@@ -415,6 +433,7 @@ infantryControl(Team) :-
   Total is Sum + C,
   set_Infantry(Team, Total),
   armySetUp(Team).
+
 
 attackControl :-
   repeat,
@@ -477,6 +496,7 @@ attack_control_ai :-
 /*
  * This method chooses the largest army from a list of territories
  */
+
 choose_strongest(List, Result):-
   choose_most_vulnerable_helper(List, 1000 ,Result).
 
@@ -515,13 +535,15 @@ setUpTurn :-
   set_Infantry(player, 25),
   set_Infantry(comp, 25),
   armySetUp(player),
+  attackControl,
+  attack_control_ai,
   turn.
 
 turn :-
   repeat,
   infantryControl(player),
-  attackControl,
   % TODO : infantryControl Comp
+  attackControl,
   attack_control_ai.
 
 countryList(L) :-
