@@ -213,7 +213,7 @@ attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
     write(AttackOn), write(" now has "), write(N3),
     write(" troops."), nl,
     write(AttackFrom), write(" now has "), write(NewAttackingArmy),
-    write(" troops."), nl
+    write(" troops."), nl, fail
   ;
     occupy(X, AttackOn),
     NewAttackOnArmy is AttackingArmy - AttackerLoss,
@@ -224,8 +224,8 @@ attack(X, AttackOn, AttackFrom, AttackingArmy, _, AttackDice, DefendDice) :-
     write(AttackFrom), write(" now has "), write(NewAttackingArmy),
     write(" troops."), nl,
     set_army(AttackFrom, NewAttackingArmy),
-    nl,nl,
-    moveControl(X)
+    nl
+
   ).
 
 % attack helpers
@@ -465,6 +465,7 @@ attackControlHelper :-
   DefendDice is min(2,MaxDefending),
   AttackDice is min(3, N - 1),
   attack(player, AttackOn, From, Troops, MaxDefending, AttackDice, DefendDice),
+  moveControl(player),
   nl.
 
 attack_control_ai :-
