@@ -551,9 +551,9 @@ setUpTurn :-
 turn :-
   repeat,
   infantryControl(player),
-  % TODO : infantryControl Comp
   attackControl,
-  attack_control_ai.
+  attack_control_ai,
+  write('End').
 
 countryList(L) :-
   findall(X, country(X,_), L).
